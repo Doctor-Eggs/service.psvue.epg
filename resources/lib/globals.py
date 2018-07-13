@@ -102,6 +102,7 @@ def sleep(time, units):
 def get_channel_list():
     json_source = get_json(EPG_URL + '/browse/items/channels/filter/all/sort/channeltype/offset/0/size/500')
     channel_list = []
+    sort_order = 1
     for channel in json_source['body']['items']:
         title = channel['title']
         if channel['channel_type'] == 'linear':
@@ -113,7 +114,8 @@ def get_channel_list():
                         logo = image['src']
                         break
 
-            channel_list.append([channel_id, title, logo])
+            channel_list.append([channel_id, title, logo, sort_order])
+            sort_order += 1
 
     return channel_list
 
@@ -126,9 +128,17 @@ def build_playlist(channels):
     m3u_file.write("\n")
 
     for channel_id, title, logo in channels:
-        url = 'http://127.0.0.1:' + ADDON.getSetting(id='port') + '/psvue'
-        url += '?params=' + urllib.quote(CHANNEL_URL + '/' + channel_id)
-        url += '|User-Agent=' + UA_ADOBE
+        url = 'plugin://plugin.video.psvue/?url='
+        url += urllib.quote(CHANNEL_URL + '/' + channel_id)
+        url += '&mode=900'
+        url += '&title='+title
+        url += '&program_id=0000000'
+        url += '&series_id=00000'
+        url += '&channel_id='+channel_id
+        url += '&airing_id=00000000'
+        url += '&tms_id=EP000000000000'
+        url += '&icon='+logo
+
 
         m3u_file.write("\n")
         channel_info = '#EXTINF:-1 tvg-id="' + channel_id + '" tvg-name="' + title + '"'
@@ -137,12 +147,11 @@ def build_playlist(channels):
         channel_info += ' group_title="PS Vue",' + title
         m3u_file.write(channel_info + "\n")
         m3u_file.write(url + "\n")
-
     m3u_file.close()
-    xbmc.log("Copying Playlist... ")
-    xbmcvfs.copy(playlist_path, playlist_copy)
-    xbmc.log("COPIED Playlist!!! ")
-
+    if ADDON.getSetting(id='custom_directory') == 'true':
+        xbmc.log("Copying Playlist... ")
+        xbmcvfs.copy(playlist_path, playlist_copy)
+        xbmc.log("COPIED Playlist!!! ")
     check_iptv_setting('epgTSOverride', 'true')
     check_iptv_setting('m3uPathType', '0')
     check_iptv_setting('m3uPath', playlist_path)
